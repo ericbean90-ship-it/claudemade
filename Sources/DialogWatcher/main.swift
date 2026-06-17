@@ -1,15 +1,13 @@
 // 메인 진입점 — AXObserver로 다이얼로그 감시 후 마우스 이동
 import Cocoa
 import ApplicationServices
+import Foundation
 
-// Accessibility 권한 확인
-func checkAccessibilityPermission() -> Bool {
-    let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-    return AXIsProcessTrustedWithOptions(options)
-}
+// launchd 환경에서 stdout 버퍼링 비활성화
+setbuf(stdout, nil)
 
-guard checkAccessibilityPermission() else {
-    print("❌ Accessibility 권한 필요: 시스템 환경설정 > 개인 정보 보호 > 손쉬운 사용에서 허용 후 재실행")
+guard AXIsProcessTrusted() else {
+    print("❌ Accessibility 권한 필요: 손쉬운 사용에서 이 앱을 허용하세요.")
     exit(1)
 }
 
