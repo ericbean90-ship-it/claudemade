@@ -85,6 +85,8 @@ for k, i in kf.items():
     cv2.rectangle(t, (0, 0), (t.shape[1], 22), (0, 0, 0), -1)
     cv2.putText(t, f"{k}  f{i}", (6, 16), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 1, cv2.LINE_AA)
     tiles.append(t)
-rows = [np.hstack(tiles[r:r + 5]) for r in (0, 5)]
+while len(tiles) % 4:
+    tiles.append(np.zeros_like(tiles[0]))
+rows = [np.hstack(tiles[r:r + 4]) for r in range(0, len(tiles), 4)]
 cv2.imwrite(f"{S}/out/keyframes_sheet.jpg", np.vstack(rows), [cv2.IMWRITE_JPEG_QUALITY, 85])
 print("sheet:", f"{S}/out/keyframes_sheet.jpg")

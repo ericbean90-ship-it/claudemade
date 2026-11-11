@@ -86,17 +86,21 @@ def model_body_x(view):
     return xs.min(), xs.max()
 
 
-# next-bay horizontal offsets (pixels in the user frame): same depth, same scale, beside the user
+# next-bay horizontal offsets (pixels in the user frame): same depth, same scale, beside the user.
+# The model goes to whichever side of the user has more free floor, centred in that gap.
 def nextbay_dx(view):
     x0, x1 = model_body_x(view)
     u = UP[view][150:196]
-    if view == "front":
-        # open floor on the image right (target side): model's body starts right of the user's body
-        uR = np.nanmax(u[:, [11, 12, 23, 24, 27, 28, 31, 32], 0])
-        return (uR + 50) - x0
-    # down-the-line: next bay on the image left, model's head just behind the user's back
-    uL = np.nanmin(u[:, [23, 24, 29, 30], 0])
-    return (uL - 45) - x1
+    pts = [11, 12, 23, 24, 27, 28, 31, 32] if view == "front" else [0, 7, 8, 15, 16, 23, 24, 29, 30]
+    uL, uR = np.nanmin(u[:, pts, 0]), np.nanmax(u[:, pts, 0])
+    margin = 30
+    left_gap, right_gap = uL - margin, (W - uR) - margin
+    half = (x1 - x0) / 2
+    if right_gap >= left_gap:
+        target_c = uR + margin + max(right_gap, 2 * half) / 2
+    else:
+        target_c = uL - margin - max(left_gap, 2 * half) / 2
+    return target_c - (x0 + x1) / 2
 
 
 DX = {v: nextbay_dx(v) for v in ("front", "dtl")}

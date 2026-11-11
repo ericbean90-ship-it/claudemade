@@ -90,6 +90,7 @@ targets = {
     "spine_loss_impact_deg": pspine(a) - pspine(P["P7"]),
     "hands_out_downswing_cm": float((np.mean([pro.pose(i)["grip"][2] for i in range(P["P6"], P["P7"] - 1)])
                                      - J0["grip"][2]) * 100 / SC),
+    "head_impact_cm": pcm("head", P["P7"], 0),
     "tempo_ratio": 3.0,
     "stance_to_shoulder_ratio": 1.1,
 }
@@ -103,6 +104,11 @@ rec = {
     "metrics": {k: round(v, 1) for k, v in metrics.items()},
     "pro_targets": {k: round(v, 1) for k, v in targets.items()},
     "notes": "",
+    "camera_geom": {
+        "front_f": round(float(cf.f), 1), "dtl_f": round(float(cb.f), 1),
+        "front_pos": [round(float(x), 2) for x in cf.ray((cf.W / 2, cf.H / 2))[0]],
+        "dtl_pos": [round(float(x), 2) for x in cb.ray((cb.W / 2, cb.H / 2))[0]],
+    },
 }
 json.dump(rec, open(f"{S}/out/metrics.json", "w"), ensure_ascii=False, indent=1)
 print(json.dumps(rec["metrics"], ensure_ascii=False))

@@ -70,7 +70,7 @@ M = {
 Jp7 = pro.pose(KF["P7"])
 M["p_spine_loss"] = spine_fwd((J0[11] + J0[12]) / 2, J0["pel"]) - spine_fwd((Jp7[11] + Jp7[12]) / 2, Jp7["pel"])
 M["p_hands_out"] = (np.mean([pro.pose(i)["grip"][2] for i in range(KF["P6"], KF["P7"] - 1)]) - J0["grip"][2]) * 100 / SC
-json.dump({k: round(float(v), 1) for k, v in M.items()}, open(f"{OUT}/metrics.json", "w"), indent=1, ensure_ascii=False)
+json.dump({k: round(float(v), 1) for k, v in M.items()}, open(f"{OUT}/ghost_numbers.json", "w"), indent=1, ensure_ascii=False)
 print({k: round(float(v), 1) for k, v in M.items()})
 
 # ---------------------------------------------------------------- drawing helpers

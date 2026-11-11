@@ -8,52 +8,62 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
 ## 개요
 같은 샷을 찍은 정면 영상과 후면(DTL) 영상 두 개로 3D 지표를 측정합니다. 그 지표로 지난 회차와 비교하고, 코칭 리포트와 비교 영상을 만듭니다.
 
-**두 가지 원칙**
-- 모든 수치는 `metrics.json` 한 곳에서 나옵니다.
-- 회차 기록은 구글 드라이브에만 보관합니다.
+**원칙**
+- 모든 수치는 `out/metrics.json` 한 곳에서 나옵니다.
+- 회차 기록은 구글 드라이브의 `골프 스윙 기록` 폴더에만 둡니다. 회차마다 파일 하나씩 추가합니다.
+- 답은 한국어로 씁니다. 큰 흐름을 한 문장으로 요약하며 시작하고, 중요한 순서대로 쓰고, 어려운 개념은 비유로 설명합니다.
 
-모든 답은 한국어로 씁니다. 먼저 큰 흐름을 한 문장으로 요약하고, 중요한 순서대로 쓰고, 어려운 개념은 비유로 설명합니다.
-
-## 준비물
-- **필수:** 같은 샷의 정면(face-on)과 후면(DTL) 영상. 파일명 타임스탬프가 같아야 합니다.
-- **선택:** Modelgolf 모델프로 영상(4:09). 사용자가 올려야 합니다.
-  - YouTube 다운로드는 서버가 403으로 막습니다. **우회 시도 금지.**
+## 준비
+- **영상:** 같은 샷의 정면 영상과 후면 영상. 파일명 시각(`YYYYMMDD_HHMMSS`)이 같아야 합니다.
+  - 파일명 시각은 UTC입니다. 영상 화면에 찍힌 시각은 +9시간(KST)입니다.
+- **모델프로 영상 (선택):** Modelgolf 영상은 사용자가 올려야 합니다. YouTube 다운로드는 서버가 403으로 막으니 **우회하지 않습니다.**
+- **변수:**
+  - `SK` = 이 스킬 폴더, `T=$SK/scripts`
+  - `W` = `<scratchpad>/swing-YYYY-MM-DD_HHMMSS` (파일명 시각)
+- **환경:** 클라우드 환경 `claudemade`를 쓰면 의존성이 미리 설치돼 있습니다. 그래도 아래 1단계 `setup.sh`는 실행합니다.
 
 ## 작업 순서
-`SK=<이 스킬 폴더>`, `W=<scratchpad>/swing-<촬영시각>`
-
-1. **환경 준비:** `bash $SK/scripts/setup.sh`
-2. **분석:** `bash $SK/scripts/run_pipeline.sh <front> <back> $W analyze`
-   - 포즈 추출, 카메라 보정, P1~P10 자동 검출, 지표 계산까지 합니다.
-3. **키프레임 확인 (필수):** `$W/out/keyframes_sheet.jpg`를 **반드시 열어 봅니다.**
-   - P4(탑)과 P7(임팩트)이 틀렸으면 `$W/keyframes.json`을 고칩니다.
-   - 고친 뒤 `... $W metrics`를 다시 실행합니다.
-   - 공 위치 기본값은 rangex 카메라 기준입니다. 카메라가 바뀌었으면 `BALL_*` 환경변수로 지정합니다.
-4. **회차 비교 (구글 드라이브):**
-   1. `search_files`로 `title contains '골프 스윙 기록'` 폴더를 찾습니다.
-   2. 그 폴더(`parentId`)의 `swing-*.json` 파일을 모두 찾습니다.
-   3. 파일마다 `download_file_content`를 호출합니다. `read_file_content`는 빈 값을 돌려주므로 쓰지 않습니다.
-   4. 결과에 표시된 저장 경로의 파일을 `$W/history/`에 복사합니다.
-   5. `python3 $SK/scripts/compare.py $W`를 실행합니다.
-   - **exit 3 = 이전 회차와 같은 영상**입니다. 사용자에게 알리고 새로 분석하지 않습니다.
-5. **리포트:** `reference/coaching.md`의 판정 기준과 템플릿을 따릅니다.
-   - 숫자는 `$W/out/metrics.json`과 `compare.md`에서만 가져옵니다.
-   - 키프레임 시트로 테이크어웨이 경로와 샤프트 기울기를 눈으로 확인하고, 그 결과를 보탭니다.
-6. **영상 만들기:**
-   - 프로 고스트: `... $W render` 실행 → `ghost_*.mp4`
-   - 모델프로 영상을 받았다면 `reference/model-pro.md`를 따릅니다.
-7. **기록 저장:**
-   - 위 폴더에 `create_file`로 `swing-<YYYY-MM-DD_HHMMSS>.json`을 새로 만듭니다.
-   - 옵션: `textContent` = `metrics.json` 내용, `contentMimeType: text/plain`, `disableConversionToGoogleType: true`
-   - `notes`에 이번 근본 과제와 드릴을 적습니다.
-   - 같은 영상이면 저장하지 않습니다.
-8. **전달:** `SendUserFile`로 영상, 시트, `compare.md`를 보냅니다.
+1. **환경 확인:** `bash $T/setup.sh`
+2. **지난 기록 가져오기 (구글 드라이브, 분석보다 먼저):**
+   1. 폴더를 찾습니다: `search_files`, `title contains '골프 스윙 기록' and mimeType = 'application/vnd.google-apps.folder'`
+      - 폴더가 없으면 첫 회차입니다. `create_file`로 폴더를 만듭니다 (`mimeType: application/vnd.google-apps.folder`).
+   2. 기록 파일을 찾습니다: `search_files`, `parentId = '<폴더id>' and title contains 'swing-'`
+      - `nextPageToken`이 오면 빈 결과가 나올 때까지 다음 페이지를 봅니다.
+   3. 파일마다 `download_file_content`를 호출합니다. `read_file_content`는 빈 값을 돌려주니 쓰지 않습니다.
+   4. 결과에 나온 저장 경로의 파일을 `$W/history/<드라이브 제목>`으로 복사합니다. 확장자는 상관없습니다.
+3. **중복 검사:** `python3 $T/precheck.py <front> <back> $W`
+   - **exit 3** = 이미 분석한 영상입니다. "같은 영상"이라고 알리고, 그때의 `notes`(과제)를 다시 안내합니다. 분석, 렌더, 저장은 하지 않습니다. **여기서 끝.**
+   - **exit 2** = 정면과 후면의 촬영 시각이 다릅니다. 같은 샷인지 사용자에게 묻습니다.
+4. **분석:** `bash $T/run_pipeline.sh <front> <back> $W analyze` (약 3분)
+5. **눈으로 확인 (필수, 둘 다):**
+   - **공 위치:** `ball.py`가 경고를 냈다면(두 카메라의 공 위치가 3cm 넘게 어긋남), 카메라나 타석이 바뀐 것입니다.
+     1. `python3 $T/ball_grid.py $W`를 실행합니다.
+     2. `out/ball_front.jpg`와 `out/ball_dtl.jpg`에서 공 중심 픽셀을 읽습니다.
+     3. `python3 $T/ball.py $W <fu> <fv> <bu> <bv>`를 실행합니다.
+     4. `bash $T/run_pipeline.sh <front> <back> $W metrics`를 다시 실행합니다.
+   - **키프레임:** `out/keyframes_sheet.jpg`를 엽니다. P4는 탑(클럽이 가장 뒤로 간 순간), P7은 임팩트(클럽이 공에 닿는 순간)여야 합니다.
+     - 틀렸으면 `python3 $T/frames_strip.py $W <시작> <끝> 2`로 후보 프레임을 보고 `$W/keyframes.json`을 고칩니다.
+     - 고친 뒤 `... $W metrics`를 다시 실행합니다.
+6. **비교:** `python3 $T/compare.py $W` → `out/compare.md`
+   - "카메라가 달라졌다"는 경고가 나오면 척추 앞숙임 같은 절대 각도는 비교에서 뺍니다.
+7. **리포트:** `reference/coaching.md`의 판정 기준, 근본 원인 고르는 법, 템플릿을 따릅니다.
+   - 키프레임 시트로 테이크어웨이 경로와 샤프트 기울기를 눈으로 본 결과를 보탭니다.
+8. **영상 만들기:**
+   - 프로 고스트: `... $W render` → `out/ghost_*.mp4`
+   - 모델프로: 영상을 받았다면 `reference/model-pro.md`를 따릅니다.
+   - 전후 비교 이미지: 지난 회차 `ghost_P4.jpg`, `ghost_P7.jpg`가 이 세션에 있을 때만 만듭니다.
+9. **기록 저장:**
+   - 위치: 2단계에서 찾은 폴더
+   - 파일: `create_file`로 `swing-YYYY-MM-DD_HHMMSS.json`을 새로 만듭니다.
+   - 옵션: `textContent` = `out/metrics.json`, `contentMimeType: text/plain`, `disableConversionToGoogleType: true`
+   - 저장하기 전에 `notes`(이번 근본 과제와 드릴), `club`, 카메라 변경 메모를 채웁니다.
+10. **전달:** `SendUserFile`로 `compare.md`, 영상, 이미지를 보냅니다.
 
 ## 지키지 않으면 사고 나는 것
 | 실수 | 대신 |
 |---|---|
 | 영상, 이미지, `metrics.json`을 저장소에 커밋 | 이 저장소는 **공개**입니다. 코드만 커밋합니다. |
-| 키프레임 시트를 보지 않고 진행 | 자동 검출은 포즈 잡음에 흔들립니다. 반드시 눈으로 확인합니다. |
-| 같은 파일을 새 회차로 기록 | `compare.py`의 MD5 검사(exit 3)를 따릅니다. |
+| 시트나 공 경고를 보지 않고 진행 | 카메라가 바뀌면 숫자 전체가 틀어집니다. 5단계는 생략하지 않습니다. |
 | ±2cm, ±2° 안의 차이를 "좋아졌다"고 말함 | 측정 오차 범위입니다. "변화 없음"이라고 씁니다. |
-| 모델프로 파생 프레임을 저장하거나 공유 | 타인 저작물입니다. 개인 분석용 결과 영상만 사용자에게 줍니다. |
+| 카메라가 바뀐 회차의 절대 각도를 비교 | 어드레스 대비 변화량 지표만 비교합니다. |
+| 모델프로 파생 프레임을 저장하거나 공유 | 타인 저작물입니다. 결과 영상은 사용자에게만 보냅니다. |

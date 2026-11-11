@@ -19,3 +19,6 @@ p, gap = triangulate(cf, (fu, fv), cb, (bu, bv))
 p[1] = 0.021  # ball radius above the floor
 np.save(f"{S}/ball.npy", p)
 print("ball (G frame, m):", p.round(3), "ray gap %.1f cm" % (gap * 100))
+if gap > 0.03:
+    print("경고: 두 카메라의 공 위치가 %.0fcm 어긋남 → 카메라/공 위치가 바뀐 것. "
+          "python3 ball_grid.py <workdir> 로 공 픽셀을 읽고 ball.py 를 다시 실행하세요." % (gap * 100))
