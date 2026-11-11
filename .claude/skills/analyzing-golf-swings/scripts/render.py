@@ -64,12 +64,12 @@ M = {
     "u_pel_top": -ucm("pel", KF["P4"], 0), "p_pel_top": -pcm("pel", KF["P4"], 0),
     "u_pel_imp": ucm("pel", KF["P7"], 0), "p_pel_imp": pcm("pel", KF["P7"], 0),
     "u_spine_loss": spine_fwd(U["sho"][a], U["pel"][a]) - spine_fwd(U["sho"][KF["P7"]], U["pel"][KF["P7"]]),
-    "u_hands_out": (U["hands"][KF["P7"]][2] - U["hands"][a][2]) * 100 / SC,
+    "u_hands_out": (np.mean(U["hands"][KF["P6"]:KF["P7"] - 1, 2]) - U["hands"][a][2]) * 100 / SC,
     "u_pel_ball": ucm("pel", KF["P7"], 2),
 }
 Jp7 = pro.pose(KF["P7"])
 M["p_spine_loss"] = spine_fwd((J0[11] + J0[12]) / 2, J0["pel"]) - spine_fwd((Jp7[11] + Jp7[12]) / 2, Jp7["pel"])
-M["p_hands_out"] = (Jp7["grip"][2] - J0["grip"][2]) * 100 / SC
+M["p_hands_out"] = (np.mean([pro.pose(i)["grip"][2] for i in range(KF["P6"], KF["P7"] - 1)]) - J0["grip"][2]) * 100 / SC
 json.dump({k: round(float(v), 1) for k, v in M.items()}, open(f"{OUT}/metrics.json", "w"), indent=1, ensure_ascii=False)
 print({k: round(float(v), 1) for k, v in M.items()})
 
@@ -186,7 +186,7 @@ def info_lines(view, i):
         L = [("임팩트 골반 타깃쪽 이동", f"나 {M['u_pel_imp']:.0f}cm", f"프로 {M['p_pel_imp']:.0f}cm")]
     if view == "dtl" and k["P5"] - 15 <= i <= k["P9"]:
         L = [("임팩트 척추각 손실", f"나 {M['u_spine_loss']:.0f}°", f"프로 {M['p_spine_loss']:.0f}°"),
-             ("임팩트 손이 몸에서 멀어짐", f"나 {M['u_hands_out']:.0f}cm", f"프로 {M['p_hands_out']:.0f}cm")]
+             ("다운스윙 손이 몸에서 멀어짐", f"나 {M['u_hands_out']:.0f}cm", f"프로 {M['p_hands_out']:.0f}cm")]
     return L
 
 
