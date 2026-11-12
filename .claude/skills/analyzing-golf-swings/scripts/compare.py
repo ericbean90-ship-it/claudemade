@@ -52,7 +52,19 @@ if prev and isinstance(cg, dict):
                      "척추 앞숙임 같은 절대 각도는 비교에서 빼고, 어드레스 대비 변화량 지표만 비교하세요.")
         lines.append("")
 
-head = ["지표"] + [(h.get("shot_time") or h.get("analyzed") or "?")[:10] for h in prev] + ["이번", "직전 대비", "프로 목표"]
+import datetime
+
+
+def screen(r):
+    if r.get("screen_time"):
+        return r["screen_time"]
+    st = r.get("shot_time")
+    if st:
+        return (datetime.datetime.strptime(st, "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M")
+    return r.get("analyzed") or "?"
+
+
+head = ["지표"] + [screen(h)[:10] for h in prev] + ["이번", "직전 대비", "프로 목표"]
 lines.append("| " + " | ".join(head) + " |")
 lines.append("|" + "---|" * len(head))
 tgt = cur.get("pro_targets", {})

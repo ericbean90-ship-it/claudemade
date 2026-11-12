@@ -34,7 +34,11 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
 3. **중복 검사:** `python3 $T/precheck.py <front> <back> $W`
    - **exit 3** = 이미 분석한 영상입니다. "같은 영상"이라고 알리고, 그때의 `notes`(과제)를 다시 안내합니다. 분석, 렌더, 저장은 하지 않습니다. **여기서 끝.**
    - **exit 2** = 정면과 후면의 촬영 시각이 다릅니다. 같은 샷인지 사용자에게 묻습니다.
-4. **분석:** `bash $T/run_pipeline.sh <front> <back> $W analyze` (약 3분)
+4. **촬영 시각 확인:** `python3 $T/stamp.py $W <front> <back>`
+   - `out/stamp.png`(영상 왼쪽 아래에 찍힌 날짜·시각을 확대한 것)를 열어 `stamp.json`의 `screen_time`과 같은지 확인합니다.
+   - 다르면 `stamp.json`을 직접 고칩니다.
+   - **모든 제작물(md, 사진, 영상) 파일명은 `stamp.json`의 `prefix`(예: `2026-11-11_1916`)로 시작합니다.** 파일명의 UTC 시각은 쓰지 않습니다.
+   - 분석: `bash $T/run_pipeline.sh <front> <back> $W analyze` (약 3분)
 5. **눈으로 확인 (필수, 둘 다):**
    - **공 위치:** `ball.py`가 경고를 냈다면(두 카메라의 공 위치가 3cm 넘게 어긋남), 카메라나 타석이 바뀐 것입니다.
      1. `python3 $T/ball_grid.py $W`를 실행합니다.
@@ -47,7 +51,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
 6. **비교:** `python3 $T/compare.py $W` → `out/compare.md`
    - "카메라가 달라졌다"는 경고가 나오면 척추 앞숙임 같은 절대 각도는 비교에서 뺍니다.
 7. **리포트 md 작성 (한국어, 매 회차 필수):**
-   1. `python3 $T/report_md.py $W`를 실행합니다. 제목과 비교표가 들어간 `out/report-YYYY-MM-DD_HHMMSS.md` 뼈대가 생깁니다.
+   1. `python3 $T/report_md.py $W`를 실행합니다. 제목과 비교표가 들어간 `out/<prefix>_리포트.md` 뼈대가 생깁니다.
    2. 뼈대의 `<!-- 작성: ... -->` 자리를 모두 한국어로 채웁니다. 섹션은 다음 4개이고, 이 순서를 바꾸지 않습니다.
       - **스윙 분석 요약:** 큰 흐름 한 문장, 이번 근본 과제 하나, 비유
       - **지난 회차 대비 변화 (MM/DD → MM/DD):** 표 + 해석
@@ -64,9 +68,14 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
    - 파일: `create_file`로 `swing-YYYY-MM-DD_HHMMSS.json`을 새로 만듭니다.
    - 옵션: `textContent` = `out/metrics.json`, `contentMimeType: text/plain`, `disableConversionToGoogleType: true`
    - 저장하기 전에 `notes`(이번 근본 과제와 드릴), `club`, 카메라 변경 메모를 채웁니다.
-   - **리포트 md도 같은 폴더에 올립니다.** `create_file`로 `report-YYYY-MM-DD_HHMMSS.md`를 만듭니다.
-     - 옵션: `textContent` = 7단계에서 채운 md 전체, `contentMimeType: text/markdown`, `disableConversionToGoogleType: true`
-     - 결과의 `fileSize`가 로컬 md 바이트 수(`wc -c`)와 같은지 확인합니다.
+   - **제작물도 같은 폴더에 올립니다 (날짜 파일명):**
+     1. `python3 $T/package.py $W`를 실행합니다. `upload/`에 `<prefix>_리포트.md`, `<prefix>_전후비교.jpg`, `<prefix>_프로고스트_합본.mp4`, `<prefix>_모델프로_*.mp4` 사본을 만들고, 파일마다 `file_ref`를 출력합니다.
+     2. 파일마다 `create_file`을 호출합니다.
+        - 옵션: `title` = 그 파일명, `parentId` = 폴더 id, `base64Content` = `file_ref`, `contentMimeType` = 출력된 mime, `disableConversionToGoogleType: true`
+     3. 결과의 `fileSize`가 출력된 바이트 수와 같은지 확인합니다.
+   - **크기 제한:** 커넥터 호출 한 번에 약 3MB까지만 보낼 수 있습니다. 3MB가 넘는 파일(영상 대부분)은 업로드가 거절됩니다.
+     - 거절되면 파일 이름을 사용자에게 알리고 어떻게 할지 묻습니다. 임의로 줄이거나 나누어 보내지 않습니다.
+     - 사용자가 처리 방식을 정하면 이 줄을 그 방식으로 바꿉니다.
 10. **전달:**
     - `SendUserFile`로 리포트 md, 영상, 이미지를 보냅니다.
     - 채팅 답변도 리포트 md의 4개 섹션 그대로 **한국어로** 씁니다. 거기에 파일 목록과 한계를 덧붙입니다. 영어로 쓰지 않습니다.

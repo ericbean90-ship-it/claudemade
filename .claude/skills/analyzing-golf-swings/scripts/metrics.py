@@ -46,6 +46,12 @@ def md5(p):
 
 m = re.search(r"(20\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})", os.path.basename(FRONT))
 shot = (f"{m[1]}-{m[2]}-{m[3]} {m[4]}:{m[5]}:{m[6]}" if m else None)
+if os.path.exists(f"{S}/stamp.json"):
+    screen = json.load(open(f"{S}/stamp.json"))["screen_time"]
+elif m:
+    screen = (datetime.datetime.strptime(shot, "%Y-%m-%d %H:%M:%S") + datetime.timedelta(hours=9)).strftime("%Y-%m-%d %H:%M")
+else:
+    screen = None
 
 addr = slice(max(a - 40, 0), a)
 shw = np.nanmedian(np.linalg.norm(F[addr, 11, :2] - F[addr, 12, :2], axis=1))
@@ -98,6 +104,7 @@ targets = {
 rec = {
     "schema": 1,
     "shot_time": shot,
+    "screen_time": screen,                                # date/time burned into the video (KST)
     "analyzed": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
     "video_md5": {"front": md5(FRONT), "dtl": md5(DTL)},
     "keyframes": P,
