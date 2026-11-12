@@ -38,6 +38,7 @@ dup = [h for h in hist if h.get("video_md5") == cur.get("video_md5")]
 lines = []
 if dup:
     lines.append(f"**같은 영상**: 이전 기록({dup[0].get('shot_time') or dup[0].get('analyzed')})과 파일이 완전히 같습니다. 변화 판단 불가.")
+    lines.append("")
 prev = [h for h in hist if h.get("video_md5") != cur.get("video_md5")][-4:]
 cg = cur.get("camera_geom")
 if prev and isinstance(cg, dict):
@@ -49,6 +50,7 @@ if prev and isinstance(cg, dict):
     if moved:
         lines.append("**카메라 위치/화각이 직전 회차와 다릅니다**(또는 직전 기록에 카메라 정보 없음): "
                      "척추 앞숙임 같은 절대 각도는 비교에서 빼고, 어드레스 대비 변화량 지표만 비교하세요.")
+        lines.append("")
 
 head = ["지표"] + [(h.get("shot_time") or h.get("analyzed") or "?")[:10] for h in prev] + ["이번", "직전 대비", "프로 목표"]
 lines.append("| " + " | ".join(head) + " |")

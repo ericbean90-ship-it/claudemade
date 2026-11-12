@@ -46,8 +46,15 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
      - 고친 뒤 `... $W metrics`를 다시 실행합니다.
 6. **비교:** `python3 $T/compare.py $W` → `out/compare.md`
    - "카메라가 달라졌다"는 경고가 나오면 척추 앞숙임 같은 절대 각도는 비교에서 뺍니다.
-7. **리포트:** `reference/coaching.md`의 판정 기준, 근본 원인 고르는 법, 템플릿을 따릅니다.
-   - 키프레임 시트로 테이크어웨이 경로와 샤프트 기울기를 눈으로 본 결과를 보탭니다.
+7. **리포트 md 작성 (한국어, 매 회차 필수):**
+   1. `python3 $T/report_md.py $W`를 실행합니다. 제목과 비교표가 들어간 `out/report-YYYY-MM-DD_HHMMSS.md` 뼈대가 생깁니다.
+   2. 뼈대의 `<!-- 작성: ... -->` 자리를 모두 한국어로 채웁니다. 섹션은 다음 4개이고, 이 순서를 바꾸지 않습니다.
+      - **스윙 분석 요약:** 큰 흐름 한 문장, 이번 근본 과제 하나, 비유
+      - **지난 회차 대비 변화 (MM/DD → MM/DD):** 표 + 해석
+      - **핵심 느낌:** 3가지
+      - **드릴:** 3~4개 + 다음 회차 확인 기준
+   3. 판정 기준, 근본 원인 고르는 법, 드릴 목록은 `reference/coaching.md`를 따릅니다. 키프레임 시트에서 눈으로 본 결과(테이크어웨이 경로, 샤프트 기울기)도 보탭니다.
+   4. `grep -c '<!-- 작성' <md>`가 **0**이어야 다음 단계로 갑니다.
 8. **영상 만들기:**
    - 프로 고스트: `... $W render` → `out/ghost_*.mp4`
    - 모델프로: 영상을 받았다면 `reference/model-pro.md`를 따릅니다.
@@ -57,7 +64,12 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
    - 파일: `create_file`로 `swing-YYYY-MM-DD_HHMMSS.json`을 새로 만듭니다.
    - 옵션: `textContent` = `out/metrics.json`, `contentMimeType: text/plain`, `disableConversionToGoogleType: true`
    - 저장하기 전에 `notes`(이번 근본 과제와 드릴), `club`, 카메라 변경 메모를 채웁니다.
-10. **전달:** `SendUserFile`로 `compare.md`, 영상, 이미지를 보냅니다.
+   - **리포트 md도 같은 폴더에 올립니다.** `create_file`로 `report-YYYY-MM-DD_HHMMSS.md`를 만듭니다.
+     - 옵션: `textContent` = 7단계에서 채운 md 전체, `contentMimeType: text/markdown`, `disableConversionToGoogleType: true`
+     - 결과의 `fileSize`가 로컬 md 바이트 수(`wc -c`)와 같은지 확인합니다.
+10. **전달:**
+    - `SendUserFile`로 리포트 md, 영상, 이미지를 보냅니다.
+    - 채팅 답변도 리포트 md의 4개 섹션 그대로 **한국어로** 씁니다. 거기에 파일 목록과 한계를 덧붙입니다. 영어로 쓰지 않습니다.
 
 ## 지키지 않으면 사고 나는 것
 | 실수 | 대신 |
