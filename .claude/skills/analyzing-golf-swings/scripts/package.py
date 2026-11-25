@@ -37,15 +37,12 @@ S = sys.argv[1]
 pre = json.load(open(f"{S}/stamp.json"))["prefix"]
 U = f"{S}/upload"
 os.makedirs(U, exist_ok=True)
-MAP = [  # source (in out/), Korean name suffix, mime
+MAP = [  # source (in out/), Korean name suffix, mime. 모델프로 겹치기 영상은 올리지 않음 (사용자 결정 2026-11-25)
     (f"{pre}_리포트.md", "리포트.md", "text/markdown"),
     ("before_after.jpg", "전후비교.jpg", "image/jpeg"),
     ("ghost_side_by_side.mp4", "프로고스트_합본.mp4", "video/mp4"),
-    ("model_both_overlay.mp4", "모델프로_합본.mp4", "video/mp4"),
     ("model_front_nextbay.mp4", "모델프로_정면_옆타석.mp4", "video/mp4"),
     ("model_dtl_nextbay.mp4", "모델프로_후면_옆타석.mp4", "video/mp4"),
-    ("model_front_overlay.mp4", "모델프로_정면_겹치기.mp4", "video/mp4"),
-    ("model_dtl_overlay.mp4", "모델프로_후면_겹치기.mp4", "video/mp4"),
 ]
 rows = []
 for src, suf, mime in MAP:

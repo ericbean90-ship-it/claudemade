@@ -61,7 +61,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
    4. `grep -c '<!-- 작성' <md>`가 **0**이어야 다음 단계로 갑니다.
 8. **영상 만들기:**
    - 프로 고스트: `... $W render` → `out/ghost_*.mp4`
-   - 모델프로: 영상을 받았다면 `reference/model-pro.md`를 따릅니다.
+   - 모델프로: 영상을 받았다면 `reference/model-pro.md`를 따릅니다. **옆 타석 영상 2개(정면, 후면)만** 만듭니다. 겹치기 영상은 만들지 않습니다(사용자 결정 2026-11-25).
    - 전후 비교 이미지: 지난 회차 `ghost_P4.jpg`, `ghost_P7.jpg`가 이 세션에 있을 때만 만듭니다.
 9. **기록 저장:**
    - 위치: 2단계에서 찾은 폴더
@@ -69,7 +69,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
    - 옵션: `textContent` = `out/metrics.json`, `contentMimeType: text/plain`, `disableConversionToGoogleType: true`
    - 저장하기 전에 `notes`(이번 근본 과제와 드릴), `club`, 카메라 변경 메모를 채웁니다.
    - **제작물도 같은 폴더에 올립니다 (날짜 파일명):**
-     1. `python3 $T/package.py $W`를 실행합니다. `upload/`에 `<prefix>_리포트.md`, `<prefix>_전후비교.jpg`, `<prefix>_프로고스트_합본.mp4`, `<prefix>_모델프로_*.mp4` 사본을 만들고, 파일마다 `file_ref`를 출력합니다.
+     1. `python3 $T/package.py $W`를 실행합니다. `upload/`에 `<prefix>_리포트.md`, `<prefix>_전후비교.jpg`, `<prefix>_프로고스트_합본.mp4`, `<prefix>_모델프로_정면_옆타석.mp4`, `<prefix>_모델프로_후면_옆타석.mp4` 사본(모두 5개)을 만들고, 파일마다 `file_ref`를 출력합니다.
      2. 파일마다 `create_file`을 호출합니다.
         - 옵션: `title` = 그 파일명, `parentId` = 폴더 id, `base64Content` = `file_ref`, `contentMimeType` = 출력된 mime, `disableConversionToGoogleType: true`
      3. 결과의 `fileSize`가 출력된 바이트 수와 같은지 확인합니다.
@@ -78,7 +78,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
      - 채팅으로 보내는 원본 영상은 줄이지 않습니다.
      - `package.py`가 경고를 내거나 업로드가 거절되면 파일 이름을 사용자에게 알립니다. 쪼개서 보내지 않습니다.
 10. **전달:**
-    - `SendUserFile`로 리포트 md, 영상, 이미지를 보냅니다.
+    - `SendUserFile`로 리포트 md, 전후 비교 이미지, 영상 3개(프로 고스트 합본, 모델프로 정면·후면 옆 타석)를 보냅니다.
     - 채팅 답변도 리포트 md의 4개 섹션 그대로 **한국어로** 씁니다. 거기에 파일 목록과 한계를 덧붙입니다. 영어로 쓰지 않습니다.
 
 ## 지키지 않으면 사고 나는 것

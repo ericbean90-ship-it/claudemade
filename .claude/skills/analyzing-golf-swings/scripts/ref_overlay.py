@@ -1,9 +1,10 @@
 """Composite the reference render (separated DTL / FRONT mannequins) onto the user's two videos.
 
-Outputs (5 videos):
+Outputs (2 videos + sheet):
   model_front_nextbay.mp4, model_dtl_nextbay.mp4   - model swings beside the user (same scale)
-  model_front_overlay.mp4, model_dtl_overlay.mp4   - model overlaid on the user, high transparency
-  model_both_overlay.mp4                           - front + DTL overlays side by side
+  model_keyframes.jpg                              - next-bay key positions, both views
+Overlay videos (model on top of the user) are NOT produced: user decision 2026-11-25.
+The overlay mode survives only in the `check` images, to verify the address scale fit.
 Timing: piecewise-linear warp of the model's P1..P10 onto the user's P1..P10.
 Scale/position: least-squares similarity fit of address landmarks (model -> user).
 """
@@ -226,30 +227,17 @@ if __name__ == "__main__":
     seq = sequence()
     cache = {}
     for v in ("front", "dtl"):
-        for m in ("nextbay", "overlay"):
-            for i in sorted(set(k for k, _ in seq)):
-                cache[(v, m, i)] = render(v, m, i)
-    files = {}
+        for i in sorted(set(k for k, _ in seq)):
+            cache[(v, i)] = render(v, "nextbay", i)
     for v in ("front", "dtl"):
-        for m in ("nextbay", "overlay"):
-            p = f"{OUT}/model_{v}_{m}.mp4"
-            wtr = writer(p, W, H)
-            for i, slow in seq:
-                wtr.stdin.write(annotate(cache[(v, m, i)], i, TITLES[(v, m)], slow).tobytes())
-            wtr.stdin.close()
-            wtr.wait()
-            files[(v, m)] = p
-    p = f"{OUT}/model_both_overlay.mp4"
-    wtr = writer(p, W * 2, H)
-    for i, slow in seq:
-        fr = np.hstack([annotate(cache[("front", "overlay", i)], i, "정면 · 나 + 모델프로", slow),
-                        annotate(cache[("dtl", "overlay", i)], i, "후면 · 나 + 모델프로", slow)])
-        wtr.stdin.write(fr.tobytes())
-    wtr.stdin.close()
-    wtr.wait()
-    # key-position sheet (overlay, both views)
-    rows = [np.hstack([annotate(cache[("front", "overlay", UKF[k])], UKF[k], k),
-                       annotate(cache[("dtl", "overlay", UKF[k])], UKF[k], k)]) for k in ("P1", "P2", "P4", "P6", "P7", "P10")]
+        wtr = writer(f"{OUT}/model_{v}_nextbay.mp4", W, H)
+        for i, slow in seq:
+            wtr.stdin.write(annotate(cache[(v, i)], i, TITLES[(v, "nextbay")], slow).tobytes())
+        wtr.stdin.close()
+        wtr.wait()
+    # key-position sheet (next-bay, both views)
+    rows = [np.hstack([annotate(cache[("front", UKF[k])], UKF[k], k),
+                       annotate(cache[("dtl", UKF[k])], UKF[k], k)]) for k in ("P1", "P2", "P4", "P6", "P7", "P10")]
     cv2.imwrite(f"{OUT}/model_keyframes.jpg", np.vstack([np.hstack(rows[j:j + 2]) for j in range(0, 6, 2)]),
                 [cv2.IMWRITE_JPEG_QUALITY, 88])
     print("done")

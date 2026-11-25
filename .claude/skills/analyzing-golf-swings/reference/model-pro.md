@@ -1,4 +1,4 @@
-# Modelgolf 모델프로 렌더 겹치기
+# Modelgolf 모델프로 옆 타석 영상
 
 ## 원본 영상
 - **출처:** YouTube `XlyQ92c8I-w`, Modelgolf 「생체역학적으로 인간이 할 수 있는 가장 이상적인 스윙을 구사하는 모델프로」, 249.4초
@@ -13,17 +13,17 @@
 bash $SK/scripts/run_pipeline.sh <front> <back> $W analyze   # 먼저 실행 (keyframes.json, 포즈 모델 필요)
 python3 $SK/scripts/ref_prepare.py $W <modelgolf.mp4>          # 구간 추출 → 마네킹 분리 → 포즈
 python3 $SK/scripts/ref_overlay.py $W $W/out check             # 4장짜리 확인 이미지 생성. 반드시 눈으로 확인
-python3 $SK/scripts/ref_overlay.py $W $W/out                   # 영상 5개 + model_keyframes.jpg
+python3 $SK/scripts/ref_overlay.py $W $W/out                   # 옆 타석 영상 2개 + model_keyframes.jpg
 ```
 
-## 결과 영상 5개
+## 결과 영상 2개
 | 파일 | 내용 |
 |---|---|
 | `model_front_nextbay.mp4` | 정면, 모델이 옆 타석에서 같이 스윙 |
 | `model_dtl_nextbay.mp4` | 후면, 모델이 옆 타석에서 같이 스윙 |
-| `model_front_overlay.mp4` | 정면, 반투명 겹치기 (몸 30% + 하늘색 외곽선) |
-| `model_dtl_overlay.mp4` | 후면, 반투명 겹치기 |
-| `model_both_overlay.mp4` | 정면과 후면 겹치기를 나란히 붙인 합본 |
+
+- **겹치기 영상은 만들지 않습니다 (사용자 결정 2026-11-25).** 내 몸 위에 겹쳐 보는 역할은 프로 고스트 합본(`ghost_side_by_side.mp4`)이 맡습니다.
+- 확인 이미지의 겹치기 칸은 어드레스 크기 맞춤을 확인하는 용도입니다. 사용자에게 보내지 않습니다.
 
 ## 확인 이미지에서 볼 것
 - **어드레스:** 후면에서 등과 엉덩이 라인이 겹쳐야 합니다. 정면은 카메라 높이 차이로 머리 위치가 조금 어긋나는 게 정상입니다.
