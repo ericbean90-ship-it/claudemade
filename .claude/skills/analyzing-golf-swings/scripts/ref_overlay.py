@@ -10,6 +10,8 @@ Scale: the user's BODY SIZE (body_profile.json: thigh + shin + torso, pooled ove
 with this session's camera, divided by the mannequin's body length (ref/model.json). Posture does not
 enter, so the model is never inflated because the user stands more upright. Feet share the user's
 floor line. Without those two files: least-squares fit of address landmarks (old behaviour).
+Build: body-shape.json (head / shoulder / girth factors) reshapes every mannequin pose with
+ref_reshape.py, and the head also gets this session's camera perspective (build_persp).
 """
 import os
 import sys
@@ -22,6 +24,7 @@ from scipy.ndimage import median_filter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from geom import load_cams
 from body_profile import address_joints
+from ref_reshape import reshape as reshape_layer
 
 S, OUT = sys.argv[1], sys.argv[2]
 R = f"{S}/ref"
@@ -124,6 +127,63 @@ def similarity(view):
 
 
 SIM = {v: similarity(v) for v in ("front", "dtl")}
+
+
+# ------------------------------------------------------------------ the user's build + camera perspective
+SHAPE = json.load(open(f"{S}/body-shape.json")) if os.path.exists(f"{S}/body-shape.json") else {}
+SHAPE = {k: float(SHAPE[k]) for k in ("head", "shoulder", "torso_girth", "limb_girth") if k in SHAPE}
+
+
+def nearest_pose(view, k):
+    if k in MP[view]:
+        return MP[view][k]
+    ks = np.array(sorted(MP[view]))
+    return MP[view][int(ks[np.argmin(np.abs(ks - k))])]
+
+
+GROUPS = {"head": [0, 7, 8], "sho": [11, 12], "hip": [23, 24], "knee": [25, 26], "ank": [27, 28]}
+
+
+def build_persp():
+    """{view: {pose: head magnification}} -- how much nearer the lens the mannequin's head is than its
+    body, seen from the user's camera, with the mannequin's two-view 3D placed at the user's spot."""
+    if BODY is None:
+        return None
+    geo = json.load(open(f"{R}/model.json"))
+    kf = BODY["seg_m"]["body_len"] / geo["body_len_px"]["front"]       # metres per front px
+    s = geo["front_per_dtl_px"]
+    cf, cb = BODY["cam"]["front"], BODY["cam"]["dtl"]
+    hipU = (BODY["joint"][23] + BODY["joint"][24]) / 2
+    sx = np.sign(cf.project(hipU + [0.1, 0, 0])[0][0, 0] - cf.project(hipU)[0][0, 0])
+    sz = np.sign(cb.project(hipU + [0, 0, 0.1])[0][0, 0] - cb.project(hipU)[0][0, 0])
+    f0, d0 = nearest_pose("front", M_ADDR), nearest_pose("dtl", M_ADDR)
+    hf0, hd0 = (f0[23, :2] + f0[24, :2]) / 2, (d0[23, :2] + d0[24, :2]) / 2
+
+    def G(k):
+        f, d = nearest_pose("front", k), nearest_pose("dtl", k)
+        return hipU + np.stack([sx * (f[:, 0] - hf0[0]) * kf, -(f[:, 1] - hf0[1]) * kf,
+                                sz * (d[:, 0] - hd0[0]) * s * kf], 1)
+
+    out = {}
+    for v, cam in (("front", cf), ("dtl", cb)):
+        per = {}
+        for k in uniq:
+            z = cam.to_cam(G(k))[:, 2]
+            body = np.mean([np.mean(z[GROUPS[g_]]) for g_ in ("sho", "hip", "knee", "ank")])
+            per[k] = float(np.clip(body / np.mean(z[GROUPS["head"]]), 0.85, 1.5))
+        a = per[min(per, key=lambda q: abs(q - M_ADDR))]
+        print(f"{v}: camera perspective on the head at address x{a:.2f} "
+              f"(range {min(per.values()):.2f}-{max(per.values()):.2f})")
+        out[v] = per
+    return out
+
+
+PERSP = build_persp()
+if SHAPE or PERSP:
+    print("model build:", SHAPE or "mannequin's own", "| perspective:", "on" if PERSP else "off")
+    for v in ("front", "dtl"):
+        for k in uniq:
+            LAY[v][k] = reshape_layer(LAY[v][k], nearest_pose(v, k), SHAPE, PERSP[v][k] if PERSP else 1.0)
 
 
 def model_body_x(view):
