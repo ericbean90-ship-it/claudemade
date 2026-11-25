@@ -6,8 +6,12 @@ Outputs (2 videos + sheet):
 Overlay videos (model on top of the user) are NOT produced: user decision 2026-11-25.
 The overlay mode survives only in the `check` images, to verify the address scale fit.
 Timing: piecewise-linear warp of the model's P1..P10 onto the user's P1..P10.
-Scale/position: least-squares similarity fit of address landmarks (model -> user).
+Scale: the user's BODY SIZE (body_profile.json: thigh + shin + torso, pooled over sessions) projected
+with this session's camera, divided by the mannequin's body length (ref/model.json). Posture does not
+enter, so the model is never inflated because the user stands more upright. Feet share the user's
+floor line. Without those two files: least-squares fit of address landmarks (old behaviour).
 """
+import os
 import sys
 import json
 import subprocess
@@ -15,13 +19,16 @@ import numpy as np
 import cv2
 from PIL import Image, ImageDraw, ImageFont
 from scipy.ndimage import median_filter
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from geom import load_cams
+from body_profile import address_joints
 
 S, OUT = sys.argv[1], sys.argv[2]
 R = f"{S}/ref"
 UKF = json.load(open(f"{S}/keyframes.json"))
 U_P = np.array([UKF[f"P{i}"] for i in range(1, 11)], float)
 # model P1..P10 (frame numbers inside ref/fr), optional override in ref/keyframes.json
-_mk = json.load(open(f"{R}/keyframes.json")) if __import__("os").path.exists(f"{R}/keyframes.json") else {}
+_mk = json.load(open(f"{R}/keyframes.json")) if os.path.exists(f"{R}/keyframes.json") else {}
 M_P = np.array(_mk.get("P", [46, 66, 81, 117, 133, 142, 146, 158, 165, 192]), float)
 M_ADDR, M_END = int(_mk.get("address", 46)), int(_mk.get("end", 204))
 uniq = [u for u in json.load(open(f"{R}/uniq.json")) if u >= 42]
@@ -62,17 +69,57 @@ def keypts(P, view):
     return np.array(pts)
 
 
+BODY = None
+if os.path.exists(f"{S}/body_profile.json") and os.path.exists(f"{R}/model.json"):
+    _cf, _cb, _ = load_cams(S)
+    _J = address_joints(S)
+    BODY = {"seg_m": json.load(open(f"{S}/body_profile.json"))["median_m"],
+            "model_px": json.load(open(f"{R}/model.json"))["body_len_px"],
+            "cam": {"front": _cf, "dtl": _cb},
+            "joint": {j: np.median(x, axis=0) for j, x in _J.items()}}
+
+
+def body_scale(view):
+    """model px -> user px that gives the mannequin the user's body length (None if unavailable).
+
+    Each segment of the profile (thighs, shins, torso) is stood upright at the place it occupies in
+    this session's address pose and projected with the real camera, so perspective and lens
+    distortion at the feet, hips and shoulders are included (a single f/depth was off by up to 6 %)."""
+    if BODY is None:
+        return None
+    cam, Jm, L = BODY["cam"][view], BODY["joint"], BODY["seg_m"]
+    pt = lambda js: np.mean([Jm[j] for j in js], axis=0)
+    px = 0.0
+    for a, b, seg, w in (((23,), (25,), "thigh", .5), ((24,), (26,), "thigh", .5),
+                         ((25,), (27,), "shin", .5), ((26,), (28,), "shin", .5), ((11, 12), (23, 24), "torso", 1.)):
+        M, h = (pt(a) + pt(b)) / 2, np.array([0, L[seg] / 2, 0])
+        px += w * np.linalg.norm(cam.project(M + h)[0][0] - cam.project(M - h)[0][0])
+    return px / BODY["model_px"][view]
+
+
+def foot_y(P):
+    return np.mean(P[[27, 28, 29, 30], 1])
+
+
 def similarity(view):
-    u = median_filter(UP[view][150:196], size=(5, 1, 1)).mean(0)
+    p1 = UKF["P1"]
+    u = median_filter(UP[view][max(p1 - 40, 0):p1 + 1], size=(5, 1, 1)).mean(0)
     m = np.mean([MP[view][k] for k in (42, 46)], axis=0)
     U_, M_ = keypts(u, view), keypts(m, view)
     mu, mm = U_.mean(0), M_.mean(0)
     # one uniform scale: keeps the model's angles (spine tilt, shaft plane) undistorted
-    g = np.sum((U_ - mu) * (M_ - mm)) / np.sum((M_ - mm) ** 2)
+    g_fit = np.sum((U_ - mu) * (M_ - mm)) / np.sum((M_ - mm) ** 2)
+    g_body = body_scale(view)
+    if g_body is None:
+        g, t = g_fit, mu - g_fit * mm
+        how = "address-posture fit (no body profile)"
+    else:
+        g = g_body
+        t = np.array([mu[0] - g * mm[0], foot_y(u) - g * foot_y(m)])   # same floor line as the user
+        how = f"body size (posture fit would be {g_fit:.3f}, {100 * (g_fit / g - 1):+.0f}%)"
     sc = np.array([g, g])
-    t = mu - sc * mm
     err = np.linalg.norm(sc * M_ + t - U_, axis=1)
-    print(f"{view}: scale x {sc[0]:.3f} y {sc[1]:.3f}, residual mean {err.mean():.1f}px max {err.max():.1f}px")
+    print(f"{view}: scale {g:.3f} by {how}; address residual mean {err.mean():.1f}px max {err.max():.1f}px")
     return sc, t
 
 
@@ -91,7 +138,8 @@ def model_body_x(view):
 # The model goes to whichever side of the user has more free floor, centred in that gap.
 def nextbay_dx(view):
     x0, x1 = model_body_x(view)
-    u = UP[view][150:196]
+    p1 = UKF["P1"]
+    u = UP[view][max(p1 - 40, 0):p1 + 1]
     pts = [11, 12, 23, 24, 27, 28, 31, 32] if view == "front" else [0, 7, 8, 15, 16, 23, 24, 29, 30]
     uL, uR = np.nanmin(u[:, pts, 0]), np.nanmax(u[:, pts, 0])
     margin = 30
@@ -217,7 +265,6 @@ def sequence():
 
 
 if __name__ == "__main__":
-    import os
     os.makedirs(OUT, exist_ok=True)
     if len(sys.argv) > 3 and sys.argv[3] == "check":
         for i in (190, UKF["P4"], UKF["P7"], UKF["P10"]):

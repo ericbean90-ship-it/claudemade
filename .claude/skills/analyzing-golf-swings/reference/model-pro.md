@@ -1,4 +1,4 @@
-# Modelgolf 모델프로 옆 타석 영상
+# Modelgolf 모델프로 옆 타석 영상 (사용자 몸 크기)
 
 ## 원본 영상
 - **출처:** YouTube `XlyQ92c8I-w`, Modelgolf 「생체역학적으로 인간이 할 수 있는 가장 이상적인 스윙을 구사하는 모델프로」, 249.4초
@@ -8,13 +8,31 @@
 - **모델의 P1~P10** (추출한 프레임 기준): 46, 66, 81, 117, 133, 142, 146, 158, 165, 192 (끝 204)
 - **파일 받기:** YouTube 다운로드는 서버가 403으로 막습니다. **사용자에게 파일을 올려 달라고 합니다.** 우회 시도 금지.
 
-## 실행
+## 실행 (매 회차)
+`run_pipeline.sh ... analyze`가 끝난 뒤(`keyframes.json`, `calib.npz`, 포즈가 있어야 함) 실행합니다.
 ```bash
-bash $SK/scripts/run_pipeline.sh <front> <back> $W analyze   # 먼저 실행 (keyframes.json, 포즈 모델 필요)
-python3 $SK/scripts/ref_prepare.py $W <modelgolf.mp4>          # 구간 추출 → 마네킹 분리 → 포즈
-python3 $SK/scripts/ref_overlay.py $W $W/out check             # 4장짜리 확인 이미지 생성. 반드시 눈으로 확인
-python3 $SK/scripts/ref_overlay.py $W $W/out                   # 옆 타석 영상 2개 + model_keyframes.jpg
+python3 $SK/scripts/ref_model.py unpack $W/modelpro-asset.zip $W                 # 드라이브에서 받은 마네킹 묶음 → $W/ref
+python3 $SK/scripts/body_profile.py $W $W/body-profile-seed.json                  # 신체 프로필 → $W/body_profile.json
+python3 $SK/scripts/ref_overlay.py $W $W/out check                               # 4장짜리 확인 이미지 생성. 반드시 눈으로 확인
+python3 $SK/scripts/ref_overlay.py $W $W/out                                     # 옆 타석 영상 2개 + model_keyframes.jpg
 ```
+- `ref_overlay.py` 출력에 `scale ... by body size`가 두 줄(front, dtl) 나와야 합니다. `address-posture fit`이 나오면 `body_profile.json`이나 `ref/model.json`이 없는 것입니다.
+
+## 몸 크기 맞춤 (사용자 결정 2026-11-25)
+- **신체 프로필:** `body_profile.py`가 어드레스 때 허벅지, 정강이, 몸통, 팔 길이를 두 카메라 삼각측량으로 잽니다.
+  - `body-profile-seed.json`(11/10~11/24 6회차)과 `history/` 기록의 `body` 값, 이번 회차 값을 모아 **부위별 중앙값**을 씁니다. 회차가 쌓일수록 안정됩니다.
+  - 이번 회차 값이 중앙값과 5% 넘게 다르면 카메라 보정을 의심합니다.
+- **배율:** 프로필의 다리와 몸통을 이번 회차 어드레스 위치에 세워 실제 카메라로 투영한 길이 ÷ 마네킹 몸 길이(`ref/model.json`). 자세는 배율에 들어가지 않습니다.
+  - 예전 방식(어드레스 관절점 맞춤)은 사용자가 모델보다 꼿꼿하게 서는 만큼 모델을 8~15% 크게 그렸습니다.
+- **비율:** 팔, 다리, 몸통의 비율은 마네킹과 사용자가 2% 안에서 같습니다(측정 오차 ±3%). 그래서 팔다리 길이를 따로 늘리거나 줄이지 않습니다.
+- **발 위치:** 발목과 뒤꿈치 높이를 사용자와 맞춥니다. 정면 카메라가 위에서 내려다보면 사용자 발끝이 더 아래로 보이는데, 원근 때문이니 정상입니다.
+
+## 묶음이 없을 때 (Modelgolf 영상을 새로 받은 경우)
+```bash
+python3 $SK/scripts/ref_prepare.py $W <modelgolf.mp4>                             # 구간 추출 → 마네킹 분리 → 포즈
+python3 $SK/scripts/ref_model.py pack $W $W/modelpro-asset.zip                   # 마네킹 치수(model.json) + 묶음 (약 2.3MB)
+```
+- `modelpro-asset.zip`을 드라이브 폴더에 `create_file`로 올립니다 (`contentMimeType: application/zip`, `disableConversionToGoogleType: true`). 같은 이름의 예전 파일은 사용자에게 묻고 정리합니다.
 
 ## 결과 영상 2개
 | 파일 | 내용 |
@@ -26,7 +44,8 @@ python3 $SK/scripts/ref_overlay.py $W $W/out                   # 옆 타석 영�
 - 확인 이미지의 겹치기 칸은 어드레스 크기 맞춤을 확인하는 용도입니다. 사용자에게 보내지 않습니다.
 
 ## 확인 이미지에서 볼 것
-- **어드레스:** 후면에서 등과 엉덩이 라인이 겹쳐야 합니다. 정면은 카메라 높이 차이로 머리 위치가 조금 어긋나는 게 정상입니다.
+- **어드레스 겹치기 칸:** 모델은 몸 크기로 그리므로 자세가 다른 만큼 어긋나는 게 정상입니다. 엉덩이 높이와 다리 길이가 비슷한지만 봅니다.
 - **옆 타석:** 모델은 사용자 옆 빈 바닥이 더 넓은 쪽에 자동으로 배치됩니다. 모델의 몸이 사용자 몸과 겹치거나 화면 밖으로 나가면 안 됩니다. 클럽 끝이 잘리는 건 괜찮습니다.
 - **스케일:** 가로세로 비율은 반드시 고정합니다. 비율을 따로 바꾸면 척추각이 왜곡됩니다.
-- **결과물 공유:** 파생 프레임과 결과 영상은 저장소에 올리지 않습니다. 사용자에게만 보냅니다.
+- **크기:** 옆 타석 모델의 다리와 몸통 길이가 사용자와 비슷해야 합니다. 머리 높이는 자세 차이(모델이 더 숙임)로 달라도 정상입니다.
+- **결과물 공유:** 파생 프레임, `modelpro-asset.zip`, 결과 영상은 저장소에 올리지 않습니다. 묶음은 사용자 비공개 드라이브에만 두고, 영상은 사용자에게만 보냅니다.

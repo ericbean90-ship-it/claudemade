@@ -16,7 +16,8 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
 ## 준비
 - **영상:** 같은 샷의 정면 영상과 후면 영상. 파일명 시각(`YYYYMMDD_HHMMSS`)이 같아야 합니다.
   - 파일명 시각은 UTC입니다. 영상 화면에 찍힌 시각은 +9시간(KST)입니다.
-- **모델프로 영상 (선택):** Modelgolf 영상은 사용자가 올려야 합니다. YouTube 다운로드는 서버가 403으로 막으니 **우회하지 않습니다.**
+- **모델프로:** 사용자 몸 크기에 맞춘 마네킹 묶음 `modelpro-asset.zip`이 드라이브 폴더에 있습니다. 매 회차 그대로 씁니다.
+  - 묶음이 없을 때만 Modelgolf 영상이 필요합니다. 사용자가 올려야 하고, YouTube 다운로드는 서버가 403으로 막으니 **우회하지 않습니다.**
 - **변수:**
   - `SK` = 이 스킬 폴더, `T=$SK/scripts`
   - `W` = `<scratchpad>/swing-YYYY-MM-DD_HHMMSS` (파일명 시각)
@@ -31,6 +32,8 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
       - `nextPageToken`이 오면 빈 결과가 나올 때까지 다음 페이지를 봅니다.
    3. 파일마다 `download_file_content`를 호출합니다. `read_file_content`는 빈 값을 돌려주니 쓰지 않습니다.
    4. 결과에 나온 저장 경로의 파일을 `$W/history/<드라이브 제목>`으로 복사합니다. 확장자는 상관없습니다.
+   5. 같은 폴더에서 `body-profile-seed.json`과 `modelpro-asset.zip`도 `download_file_content`로 받습니다.
+      - 저장 경로의 파일을 각각 `$W/body-profile-seed.json`, `$W/modelpro-asset.zip`으로 복사합니다. **`history/`에는 넣지 않습니다** (비교 기록이 아닙니다).
 3. **중복 검사:** `python3 $T/precheck.py <front> <back> $W`
    - **exit 3** = 이미 분석한 영상입니다. "같은 영상"이라고 알리고, 그때의 `notes`(과제)를 다시 안내합니다. 분석, 렌더, 저장은 하지 않습니다. **여기서 끝.**
    - **exit 2** = 정면과 후면의 촬영 시각이 다릅니다. 같은 샷인지 사용자에게 묻습니다.
@@ -61,13 +64,16 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
    4. `grep -c '<!-- 작성' <md>`가 **0**이어야 다음 단계로 갑니다.
 8. **영상 만들기:**
    - 프로 고스트: `... $W render` → `out/ghost_*.mp4`
-   - 모델프로: 영상을 받았다면 `reference/model-pro.md`를 따릅니다. **옆 타석 영상 2개(정면, 후면)만** 만듭니다. 겹치기 영상은 만들지 않습니다(사용자 결정 2026-11-25).
+   - 모델프로 (매 회차): `reference/model-pro.md`를 따릅니다.
+     - 마네킹은 **사용자 몸 크기**로 그립니다(사용자 결정 2026-11-25). `body_profile.py`가 회차마다 잰 몸 길이를 모아 중앙값을 냅니다.
+     - **옆 타석 영상 2개(정면, 후면)만** 만듭니다. 겹치기 영상은 만들지 않습니다(사용자 결정 2026-11-25).
    - 전후 비교 이미지: 지난 회차 `ghost_P4.jpg`, `ghost_P7.jpg`가 이 세션에 있을 때만 만듭니다.
 9. **기록 저장:**
    - 위치: 2단계에서 찾은 폴더
    - 파일: `create_file`로 `swing-YYYY-MM-DD_HHMMSS.json`을 새로 만듭니다.
    - 옵션: `textContent` = `out/metrics.json`, `contentMimeType: text/plain`, `disableConversionToGoogleType: true`
    - 저장하기 전에 `notes`(이번 근본 과제와 드릴), `club`, 카메라 변경 메모를 채웁니다.
+   - `metrics.json`의 `body`(이번 회차 몸 치수)는 지우지 않습니다. 다음 회차 신체 프로필이 이 값을 모읍니다.
    - **제작물도 같은 폴더에 올립니다 (날짜 파일명):**
      1. `python3 $T/package.py $W`를 실행합니다. `upload/`에 `<prefix>_리포트.md`, `<prefix>_전후비교.jpg`, `<prefix>_프로고스트_합본.mp4`, `<prefix>_모델프로_정면_옆타석.mp4`, `<prefix>_모델프로_후면_옆타석.mp4` 사본(모두 5개)을 만들고, 파일마다 `file_ref`를 출력합니다.
      2. 파일마다 `create_file`을 호출합니다.
@@ -88,4 +94,5 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
 | 시트나 공 경고를 보지 않고 진행 | 카메라가 바뀌면 숫자 전체가 틀어집니다. 5단계는 생략하지 않습니다. |
 | ±2cm, ±2° 안의 차이를 "좋아졌다"고 말함 | 측정 오차 범위입니다. "변화 없음"이라고 씁니다. |
 | 카메라가 바뀐 회차의 절대 각도를 비교 | 어드레스 대비 변화량 지표만 비교합니다. |
-| 모델프로 파생 프레임을 저장하거나 공유 | 타인 저작물입니다. 결과 영상은 사용자에게만 보냅니다. |
+| 모델프로 파생 프레임을 저장소에 커밋하거나 공유 | 타인 저작물입니다. `modelpro-asset.zip`은 사용자 비공개 드라이브에만 두고, 결과 영상은 사용자에게만 보냅니다. |
+| 모델프로 크기를 어드레스 자세로 맞춤 | 자세가 꼿꼿할수록 모델이 8~15% 커집니다. `body_profile.json`이 있어야 몸 크기로 그려집니다. 출력의 `by body size`를 확인합니다. |

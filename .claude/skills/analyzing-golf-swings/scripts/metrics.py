@@ -15,6 +15,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from geom import load_cams
 from pro_model import ProGolfer
+from body_profile import measure as measure_body
 
 S, FRONT, DTL = sys.argv[1:4]
 cf, cb, XG = load_cams(S)
@@ -110,6 +111,7 @@ rec = {
     "keyframes": P,
     "metrics": {k: round(v, 1) for k, v in metrics.items()},
     "pro_targets": {k: round(v, 1) for k, v in targets.items()},
+    "body": measure_body(S),                              # segment lengths (m), pooled by body_profile.py
     "notes": "",
     "camera_geom": {
         "front_f": round(float(cf.f), 1), "dtl_f": round(float(cb.f), 1),
