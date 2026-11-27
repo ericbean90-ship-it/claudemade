@@ -41,7 +41,9 @@ MAP = [  # source (in out/), Korean name suffix, mime. 모델프로 겹치기 �
     (f"{pre}_리포트.md", "리포트.md", "text/markdown"),
     ("before_after.jpg", "전후비교.jpg", "image/jpeg"),
     ("ghost_side_by_side.mp4", "프로고스트_합본.mp4", "video/mp4"),
-    ("model_front_nextbay.mp4", "모델프로_정면_옆타석.mp4", "video/mp4"),
+    ("pro_front_nextbay.mp4", "레슨프로_정면_옆타석.mp4", "video/mp4"),     # 기본 모델 (2026-11-27~)
+    ("pro_dtl_nextbay.mp4", "레슨프로_후면_옆타석.mp4", "video/mp4"),
+    ("model_front_nextbay.mp4", "모델프로_정면_옆타석.mp4", "video/mp4"),   # 대체 경로일 때만 생김
     ("model_dtl_nextbay.mp4", "모델프로_후면_옆타석.mp4", "video/mp4"),
 ]
 rows = []

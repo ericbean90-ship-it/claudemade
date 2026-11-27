@@ -1,6 +1,6 @@
 ---
 name: analyzing-golf-swings
-description: Use when the user uploads golf swing videos (a face-on "front" clip and a down-the-line "back" clip of the same shot, e.g. rangex *_frontVideo.MP4 / *_backVideo.MP4), asks for swing coaching or problems, a pro overlay/ghost comparison, an overlay of the Modelgolf model-pro render, or asks whether their swing changed since last time (스윙 분석, 변화가 있나, 프로랑 겹쳐줘).
+description: Use when the user uploads golf swing videos (a face-on "front" clip and a down-the-line "back" clip of the same shot, e.g. rangex *_frontVideo.MP4 / *_backVideo.MP4), asks for swing coaching or problems, a pro overlay/ghost comparison, their lesson pro swinging in the next bay (or new videos of the lesson pro to use as the model, 누끼), the Modelgolf model-pro render, or asks whether their swing changed since last time (스윙 분석, 변화가 있나, 프로랑 겹쳐줘, 레슨프로).
 ---
 
 # 골프 스윙 영상 분석·코칭
@@ -16,7 +16,8 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
 ## 준비
 - **영상:** 같은 샷의 정면 영상과 후면 영상. 파일명 시각(`YYYYMMDD_HHMMSS`)이 같아야 합니다.
   - 파일명 시각은 UTC입니다. 영상 화면에 찍힌 시각은 +9시간(KST)입니다.
-- **모델프로:** 사용자 몸 크기에 맞춘 마네킹 묶음 `modelpro-asset.zip`이 드라이브 폴더에 있습니다. 매 회차 그대로 씁니다.
+- **비교 모델 = 레슨 프로 (사용자 결정 2026-11-27):** 사용자의 레슨 프로가 사용자 연습 타석에서 찍은 영상을 누끼 딴 묶음 `pro-asset-front.zip`, `pro-asset-back.zip`이 드라이브 폴더에 있습니다. 매 회차 그대로 씁니다. 만들기·다시 만들기는 `reference/lesson-pro.md`를 봅니다.
+  - Modelgolf 마네킹(`modelpro-asset.zip`)은 레슨 프로 묶음이 없을 때만 쓰는 대체 경로입니다(`reference/model-pro.md`).
   - 묶음이 없을 때만 Modelgolf 영상이 필요합니다. 사용자가 올려야 하고, YouTube 다운로드는 서버가 403으로 막으니 **우회하지 않습니다.**
 - **변수:**
   - `SK` = 이 스킬 폴더, `T=$SK/scripts`
@@ -32,7 +33,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
       - `nextPageToken`이 오면 빈 결과가 나올 때까지 다음 페이지를 봅니다.
    3. 파일마다 `download_file_content`를 호출합니다. `read_file_content`는 빈 값을 돌려주니 쓰지 않습니다.
    4. 결과에 나온 저장 경로의 파일을 `$W/history/<드라이브 제목>`으로 복사합니다. 확장자는 상관없습니다.
-   5. 같은 폴더에서 `body-profile-seed.json`, `body-shape.json`, `modelpro-asset.zip`도 `download_file_content`로 받습니다.
+   5. 같은 폴더에서 `pro-asset-front.zip`, `pro-asset-back.zip`, `body-profile-seed.json`도 `download_file_content`로 받습니다. (레슨 프로 묶음이 없을 때만 `body-shape.json`, `modelpro-asset.zip`)
       - 저장 경로의 파일을 각각 `$W/` 아래 같은 이름으로 복사합니다. **`history/`에는 넣지 않습니다** (비교 기록이 아닙니다).
 3. **중복 검사:** `python3 $T/precheck.py <front> <back> $W`
    - **exit 3** = 이미 분석한 영상입니다. "같은 영상"이라고 알리고, 그때의 `notes`(과제)를 다시 안내합니다. 분석, 렌더, 저장은 하지 않습니다. **여기서 끝.**
@@ -64,11 +65,15 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
    4. `grep -c '<!-- 작성' <md>`가 **0**이어야 다음 단계로 갑니다.
 8. **영상 만들기:**
    - 프로 고스트: `... $W render` → `out/ghost_*.mp4`
-   - 모델프로 (매 회차): `reference/model-pro.md`를 따릅니다.
-     - 마네킹은 **사용자 몸 크기와 체형**으로 그립니다(사용자 결정 2026-11-25).
-       - 몸 크기: `body_profile.py`가 회차마다 잰 몸 길이를 모아 중앙값을 냅니다.
-       - 체형: `body-shape.json`(키 175cm, 72kg, 머리·어깨·몸통·팔다리 배율)대로 관절 각도는 두고 모양만 바꿉니다. 정면 카메라 원근으로 커지는 머리 크기도 회차마다 더합니다.
+   - 레슨 프로 옆 타석 (매 회차, `reference/lesson-pro.md`):
+     ```bash
+     python3 $T/pro_asset.py unpack $W/pro $W/pro-asset-front.zip $W/pro-asset-back.zip
+     python3 $T/pro_overlay.py $W $W/pro $W/out check     # out/check_pro_*.jpg 를 눈으로 확인
+     python3 $T/pro_overlay.py $W $W/pro $W/out           # pro_front_nextbay.mp4, pro_dtl_nextbay.mp4
+     ```
+     - 출력의 `background match ... scale`이 1.00 근처면 같은 타석·같은 카메라입니다. `background match failed`가 나오면 다른 타석입니다. 그때는 다리 길이로 크기를 맞추므로 크기가 근사치라고 사용자에게 알립니다.
      - **옆 타석 영상 2개(정면, 후면)만** 만듭니다. 겹치기 영상은 만들지 않습니다(사용자 결정 2026-11-25).
+     - `body_profile.py $W $W/body-profile-seed.json`은 계속 돌립니다(몸 치수 기록용).
    - 전후 비교 이미지: 지난 회차 `ghost_P4.jpg`, `ghost_P7.jpg`가 이 세션에 있을 때만 만듭니다.
 9. **기록 저장:**
    - 위치: 2단계에서 찾은 폴더
@@ -77,7 +82,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
    - 저장하기 전에 `notes`(이번 근본 과제와 드릴), `club`, 카메라 변경 메모를 채웁니다.
    - `metrics.json`의 `body`(이번 회차 몸 치수)는 지우지 않습니다. 다음 회차 신체 프로필이 이 값을 모읍니다.
    - **제작물도 같은 폴더에 올립니다 (날짜 파일명):**
-     1. `python3 $T/package.py $W`를 실행합니다. `upload/`에 `<prefix>_리포트.md`, `<prefix>_전후비교.jpg`, `<prefix>_프로고스트_합본.mp4`, `<prefix>_모델프로_정면_옆타석.mp4`, `<prefix>_모델프로_후면_옆타석.mp4` 사본(모두 5개)을 만들고, 파일마다 `file_ref`를 출력합니다.
+     1. `python3 $T/package.py $W`를 실행합니다. `upload/`에 `<prefix>_리포트.md`, `<prefix>_전후비교.jpg`, `<prefix>_프로고스트_합본.mp4`, `<prefix>_레슨프로_정면_옆타석.mp4`, `<prefix>_레슨프로_후면_옆타석.mp4` 사본(모두 5개)을 만들고, 파일마다 `file_ref`를 출력합니다.
      2. 파일마다 `create_file`을 호출합니다.
         - 옵션: `title` = 그 파일명, `parentId` = 폴더 id, `base64Content` = `file_ref`, `contentMimeType` = 출력된 mime, `disableConversionToGoogleType: true`
      3. 결과의 `fileSize`가 출력된 바이트 수와 같은지 확인합니다.
@@ -86,7 +91,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
      - 채팅으로 보내는 원본 영상은 줄이지 않습니다.
      - `package.py`가 경고를 내거나 업로드가 거절되면 파일 이름을 사용자에게 알립니다. 쪼개서 보내지 않습니다.
 10. **전달:**
-    - `SendUserFile`로 리포트 md, 전후 비교 이미지, 영상 3개(프로 고스트 합본, 모델프로 정면·후면 옆 타석)를 보냅니다.
+    - `SendUserFile`로 리포트 md, 전후 비교 이미지, 영상 3개(프로 고스트 합본, 레슨 프로 정면·후면 옆 타석)를 보냅니다.
     - 채팅 답변도 리포트 md의 4개 섹션 그대로 **한국어로** 씁니다. 거기에 파일 목록과 한계를 덧붙입니다. 영어로 쓰지 않습니다.
 
 ## 지키지 않으면 사고 나는 것
@@ -96,6 +101,7 @@ description: Use when the user uploads golf swing videos (a face-on "front" clip
 | 시트나 공 경고를 보지 않고 진행 | 카메라가 바뀌면 숫자 전체가 틀어집니다. 5단계는 생략하지 않습니다. |
 | ±2cm, ±2° 안의 차이를 "좋아졌다"고 말함 | 측정 오차 범위입니다. "변화 없음"이라고 씁니다. |
 | 카메라가 바뀐 회차의 절대 각도를 비교 | 어드레스 대비 변화량 지표만 비교합니다. |
+| 레슨 프로 영상·누끼·`pro-asset-*.zip`을 저장소에 커밋하거나 공유 | 실제 인물입니다. 사용자 비공개 드라이브에만 두고, 결과 영상은 사용자에게만 보냅니다. |
 | 모델프로 파생 프레임을 저장소에 커밋하거나 공유 | 타인 저작물입니다. `modelpro-asset.zip`은 사용자 비공개 드라이브에만 두고, 결과 영상은 사용자에게만 보냅니다. |
 | 모델프로 크기를 어드레스 자세로 맞춤 | 자세가 꼿꼿할수록 모델이 8~15% 커집니다. `body_profile.json`이 있어야 몸 크기로 그려집니다. 출력의 `by body size`를 확인합니다. |
 | 모델프로를 마네킹 체형 그대로 그림 | `$W/body-shape.json`이 없으면 그렇게 됩니다. 출력의 `model build: {...}`에 배율 4개가 나와야 합니다. |
