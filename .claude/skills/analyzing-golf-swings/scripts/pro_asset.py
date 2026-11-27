@@ -24,7 +24,7 @@ import numpy as np
 import cv2
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pro_cutout import read, render_club
+from pro_cutout import read, render_club, solid_alpha
 
 MAX = 2_900_000
 
@@ -100,7 +100,7 @@ def preview(D, prefix):
         L = np.load(f"{D}/pose/{v}.npz")["img"]
         out = []
         for k in range(min(len(F), len(A))):
-            x = np.dstack([F[k].astype(np.float32), A[k].astype(np.float32)])
+            x = np.dstack([F[k].astype(np.float32), solid_alpha(A[k]).astype(np.float32)])
             render_club(x, (L[k, 15, :2] + L[k, 16, :2]) / 2, club[v]["angle"][k], club[v]["length"][k],
                         behind=bool(club[v]["behind"][k]))
             out.append(np.clip(x, 0, 255).astype(np.uint8))

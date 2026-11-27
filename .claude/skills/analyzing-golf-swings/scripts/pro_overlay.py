@@ -8,7 +8,8 @@ Outputs: pro_front_nextbay.mp4, pro_dtl_nextbay.mp4, pro_keyframes.jpg   (check:
 Placement: the pro was filmed in the user's own bay, so the backgrounds are matched directly (SIFT on
 the empty background, similarity fit) instead of trusting two separate calibrations: same camera ->
 scale 1, the pro stands exactly on the user's spot; a moved camera -> the fitted scale/shift. He is
-then slid sideways into the next bay (the side with more free floor). Real person: drawn opaque,
+then slid sideways into the next bay (the side with more free floor). Real person: drawn fully opaque
+(solid_alpha fills see-through patches), never as a transparent overlay (user decision 2026-11-27),
 no reshaping. Timing: the pro's P1..P10 warped onto the user's P1..P10, nearest real frame.
 """
 import os
@@ -20,7 +21,7 @@ import cv2
 from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pro_cutout import read, render_club
+from pro_cutout import read, render_club, solid_alpha
 
 S, PRO, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 CHECK = len(sys.argv) > 4 and sys.argv[4] == "check"
@@ -144,7 +145,7 @@ def pro_frame(i):
 
 
 def pro_layer(v, k, shift=True):
-    lay = np.dstack([PF[v][k].astype(np.float32), PA[v][k].astype(np.float32)])
+    lay = np.dstack([PF[v][k].astype(np.float32), solid_alpha(PA[v][k]).astype(np.float32)])
     c = CLUB[VIEWS[v][1]]
     hand = (PL[v][k, 15, :2] + PL[v][k, 16, :2]) / 2
     render_club(lay, hand, c["angle"][k], c["length"][k], behind=bool(c["behind"][k]))

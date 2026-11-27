@@ -250,6 +250,24 @@ def club_3d(S, raw, ball, K, gapmax=20, gapseen=120, pair=2):
     return out
 
 
+def solid_alpha(a):
+    """The pro is a real person: draw him fully opaque. Dark trousers on a dark floor and motion blur
+    leave see-through patches (alpha 0.5-0.9) inside the body; fill the inside of the silhouette and
+    keep only a 1-2 px soft rim."""
+    a = a.astype(np.float32) / 255
+    m = (a > 0.35).astype(np.uint8)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(1 - m)        # fill enclosed holes
+    for i in range(1, n):
+        x, y, w, h, area = st[i]
+        if x > 0 and y > 0 and x + w < m.shape[1] and y + h < m.shape[0] and area < 400:
+            m[lab == i] = 1
+    core = cv2.erode(m, np.ones((3, 3), np.uint8))
+    rim = np.clip((a - 0.15) / 0.45, 0, 1) * m
+    out = np.where(core > 0, 1.0, np.maximum(rim, cv2.GaussianBlur(m.astype(np.float32), (3, 3), 0) * (a > 0.1)))
+    return (np.clip(out, 0, 1) * 255).astype(np.uint8)
+
+
 def render_club(img_rgba, hand, ang, length, scale=1.0, behind=False):
     """draw a clean shaft + head on an RGBA float layer (in place). hand/length in layer px."""
     if ang is None or not np.isfinite(ang) or not np.isfinite(length):
